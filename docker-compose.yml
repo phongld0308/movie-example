@@ -1,0 +1,94 @@
+version: '3.8'
+
+services:
+  consul:
+    image: hashicorp/consul:latest
+    ports:
+      - "8500:8500"
+    command: 'agent -server -ui -node=server-1 -bootstrap-expect=1 -client=0.0.0.0'
+    networks:
+      - movie-network
+
+  postgres:
+    image: postgres:latest
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: movieexample
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - movie-network
+
+  metadata:
+    build:
+      context: .
+      dockerfile: metadata/Dockerfile
+    environment:
+      - CONSUL_ADDR=consul:8500
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USER=postgres
+      - DB_PASSWORD=password
+      - DB_NAME=movieexample
+    ports:
+      - "8081:8081"
+    depends_on:
+      - consul
+      - postgres
+    networks:
+      - movie-network
+
+  rating:
+    build:
+      context: .
+      dockerfile: rating/Dockerfile
+    environment:
+      - CONSUL_ADDR=consul:8500
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USER=postgres
+      - DB_PASSWORD=password
+      - DB_NAME=movieexample
+    ports:
+      - "8082:8082"
+    depends_on:
+      - consul
+      - postgres
+    networks:
+      - movie-network
+
+  movie:
+    build:
+      context: .
+      dockerfile: movie/Dockerfile
+    environment:
+      - CONSUL_ADDR=consul:8500
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USER=postgres
+      - DB_PASSWORD=password
+      - DB_NAME=movieexample
+    ports:
+      - "8083:8083"
+    depends_on:
+      - consul
+      - postgres
+      - metadata
+      - rating
+    networks:
+      - movie-network
+
+networks:
+  movie-network:
+    driver: bridge
+
+volumes:
+  postgres_data: 
