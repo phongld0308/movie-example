@@ -39,3 +39,22 @@ func (h *Handler) Getmetadata(ctx context.Context, req *gen.GetMetadataRequest) 
 		Metadata: model.MetadataToProto(m),
 	}, nil
 }
+
+func (h *Handler) PutMetadata(ctx context.Context, req *gen.PutMetadataRequest) (*gen.PutMetadataResponse, error) {
+	if req == nil || req.Metadata == nil {
+		return nil, status.Errorf(codes.InvalidArgument, "nil req or metadata")
+	}
+
+	metadata := &model.Metadata{
+		ID:          req.Metadata.Id,
+		Title:       req.Metadata.Title,
+		Description: req.Metadata.Description,
+		Director:    req.Metadata.Director,
+	}
+
+	if err := h.ctrl.Put(ctx, metadata); err != nil {
+		return nil, status.Errorf(codes.Internal, err.Error())
+	}
+
+	return &gen.PutMetadataResponse{}, nil
+}
